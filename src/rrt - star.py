@@ -5,6 +5,24 @@ from utils import plot_line_segments, line_line_intersection
 np.random.seed(1)
 
 # Represents a motion planning problem to be solved using the RRT algorithm
+class node(object):
+    _id = 0
+    def __init__(self, loc):
+        self.loc = loc
+        self._id = node._id
+        node._id += 1
+        self.parent = None
+        self.T = None
+        
+    def setP(self, parent):
+        self.parent = parent
+        
+    def setT(self, T):
+        self.T = T
+        
+    def getid(self):
+        return self._id
+        
 class RRT(object):
 
     def __init__(self, statespace_lo, statespace_hi, x_init, x_goal, obstacles):
@@ -59,14 +77,15 @@ class RRT(object):
 
         # V stores the states that have been added to the RRT (pre-allocated at its maximum size
         # since numpy doesn't play that well with appending/extending)
-        V = np.zeros((max_iters, state_dim))
-        V[0,:] = self.x_init    # RRT is rooted at self.x_init
-        self.n = 1                   # the current size of the RRT (states accessible as V[range(n),:])
-        T = np.zeros((max_iters,1))
+        x_init = node(self.x_init)
+        x_init.setP(None)
+        x_init.setT(0)
+        V = [x_init]
+        n = 1                   # the current size of the RRT (states accessible as V[range(n),:])
+
         # P stores the parent of each state in the RRT. P[0] = -1 since the root has no parent,
         # P[1] = 0 since the parent of the first additional state added to the RRT must have been
         # extended from the root, in general 0 <= P[i] < i for all i < n
-        P = -np.ones(max_iters, dtype=int)
 
         ## Intermediate Outputs
         # You must update and/or populate:
@@ -86,30 +105,31 @@ class RRT(object):
                 x_rand = self.x_goal
             else:
                 x_rand = np.random.uniform(self.statespace_lo, self.statespace_hi)
-            success, P, V, T = self.extend(P,V,T,x_rand,eps)
+            success, V = self.extend(V,x_rand,eps)
 
-
-        P = P[:self.n]
-        V = V[:self.n,:]
-        for i in range(len(P)):
-            for j in range(len(P)):
-                if i == P[j] and P[i] == j:
-                    print "cycle"
-        # print P
-        solution_path = [self.x_goal]
-        print "path"
-        while np.all(solution_path[0] != self.x_init):
-            idx = np.where(V == solution_path[0])[0][0]
-            solution_path = [V[P[idx],:]] + solution_path
 
         # print P
         # print type(solution_path)
         plt.figure()
         plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
-        self.plot_tree(V, P, color="blue", linewidth=.5, label="RRT tree")
+        self.plot_tree(V, color="blue", linewidth=.5, label="RRT tree")
+        nodes = np.zeros((self.n,2))
+        for i in range(len(V)):
+            nodes[i,:] = V[i].loc
+            if np.all(V[i].loc == self.x_goal):
+                goalnode = V[i]
         if success:
+
+            solution_path_node = [goalnode]
+            solution_path = [goalnode.loc]
+            while np.all(solution_path[0] != self.x_init):
+                parent = solution_path_node[0].parent
+                solution_path_node = [parent] + solution_path
+                solution_path = [parent.loc] + solution_path
             self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
-        plt.scatter(V[:self.n,0], V[:self.n,1])
+
+        
+        plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
         plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
         plt.annotate(r"$x_{goal}$", self.x_goal[:2] + [.2, 0], fontsize=16)
@@ -120,62 +140,66 @@ class RRT(object):
 # straight line (Euclidean metric)
 class GeometricRRT(RRT):
     
-    def extend(self,P,V,T,x_rand,eps):
+    def extend(self,V,x_rand,eps):
         success = False
-        x_near = V[self.find_nearest(V[:self.n,:], x_rand),:]
-        x_new = self.steer_towards(x_near, x_rand, eps)
+        x_near = V[self.find_nearest(V, x_rand)]
+        x_new = node(self.steer_towards(x_near.loc, x_rand, eps))
         
 
-        if self.is_free_motion(self.obstacles, x_near, x_new):
-            V[self.n,:] = x_new
-            T[self.n] = T[max(P[np.where(V == x_near)[0][0]],0)] + np.linalg.norm(np.array(x_new)-np.array(x_near))
-            cmin = T[self.n]
+        if self.is_free_motion(self.obstacles, x_near.loc, x_new.loc):
+            V.append(x_new)
+            x_new.setT(x_near.T + np.linalg.norm(np.array(x_new.loc)-np.array(x_near.loc)))
+            cmin = x_new.T
             zmin = x_near
             Z = self.near(V,x_new)
-            if Z != np.array([]):
-                for i in range(len(Z[:,0])):
-                    z_new = self.steer_towards(Z[i,:],x_new,eps)
-                    dist = np.linalg.norm(np.array(z_new)-np.array(Z[i,:]))
-                    idx = np.where(V == Z[i,:])[0][0]
-                    if self.is_free_motion(self.obstacles, Z[i,:], z_new) and np.all(z_new == x_new) and T[idx]+dist < cmin:
+            #if zmin not in Z:
+            #    print "n = ", self.n
+            #    print "V = ",len(V)
+            #    print "Z = ",len(Z)
+            #    print "dist = ", np.sqrt(100*np.log(self.n)/(np.pi*self.n))
+            #    print "x = ",x_new.loc
+            #    print "zmin = ", zmin.loc
+            #    for z in Z:
+            #        print "z = ",z.loc
+            if Z:
+                for i in range(len(Z)):
+                    z_new = self.steer_towards(Z[i].loc,x_new.loc,eps)
+                    dist = np.linalg.norm(np.array(z_new)-np.array(Z[i].loc))
+                    if self.is_free_motion(self.obstacles, Z[i].loc, z_new) and np.all(z_new == x_new.loc) and Z[i].T+dist < cmin:
                         #print "improve parent"
-                        cmin = T[idx] + dist
-                        zmin = Z[i,:]
+                        cmin = Z[i].T + dist
+                        zmin = Z[i]
                         
-
-            P[self.n] = np.where(V == zmin)[0][0]
+            x_new.setP(zmin)
             
-            idx_min = np.where(Z == zmin)[0]
-            
-            if Z.size != 0 and idx_min.size != 0:
-                
-                
-                Z = np.delete(Z,idx_min[0],0)
-                for i in range(len(Z[:,0])):
-                    z_near = self.steer_towards(x_new,Z[i,:],eps)
-                    if np.all(z_near == Z[i,:]):
-                        dist = np.linalg.norm(np.array(x_new)-np.array(Z[i,:]))
-                        idx = np.where(V == z_near)[0][0]
-                        T_near = T[idx]
+                      
+            if Z:
+                if zmin in Z:
+                    Z.remove(zmin)
+                for i in range(len(Z)):
+                    z_near = self.steer_towards(x_new.loc,Z[i].loc,eps)
+                    if np.all(z_near == Z[i].loc):
+                        dist = np.linalg.norm(np.array(x_new.loc)-np.array(Z[i].loc))
+                        T_near = Z[i].T
                         #print "T_near = ", T_near
                         #print "comp = ", T[self.n]+dist
-                        if self.is_free_motion(self.obstacles, x_new, z_near) and T[self.n]+dist < T_near:
+                        if self.is_free_motion(self.obstacles, x_new.loc, Z[i].loc) and x_new.T+dist < T_near:
                             #print "rewiring"
-                            P[idx] = np.where(V == x_new)[0][0]
+                            Z[i].setP(x_new)
                     
             self.n = self.n+1
-            if np.all(x_new == self.x_goal):
+            if np.all(x_new.loc == self.x_goal):
                 success = True
         
-        return success, P, V, T
+        return success, V
         
 
     def find_nearest(self, V, x):
         # TODO: fill me in!
-        num_states = len(V[:,0])
+        num_states = len(V)
         distances = np.zeros(num_states)
         for i in range(num_states):
-            distances[i] = np.linalg.norm(np.array(x)-np.array(V[i,:]))
+            distances[i] = np.linalg.norm(np.array(x)-np.array(V[i].loc))
         # print distances
 
         idx = np.argmin(distances)
@@ -185,7 +209,7 @@ class GeometricRRT(RRT):
 
     def steer_towards(self, x, y, eps):
         # TODO: fill me in!
-        dist = np.linalg.norm(np.array(x)-np.array(y))
+        dist = np.linalg.norm(np.array(x) - np.array(y))
         if dist < eps:
             return y
         dx = x[0] - y[0]
@@ -195,15 +219,16 @@ class GeometricRRT(RRT):
         return np.array([x[0]+eps*cos, x[1]+eps*sin])
         
     def near(self, V, x):
-        dist = np.sqrt(100*np.log(self.n)/(np.pi*self.n))
+        #dist = np.sqrt(100*np.log(self.n)/(np.pi*self.n))
+        dist = 3.0
 
         retval = []
         for i in range(self.n):
-            if np.linalg.norm(np.array(x)-np.array(V[i,:])) <= dist:
-                retval.append(V[i,:])
+            if np.linalg.norm(np.array(x.loc)-np.array(V[i].loc)) <= dist:
+                retval.append(V[i])
 
             
-        return np.array(retval)
+        return retval
 
 
     def is_free_motion(self, obstacles, x1, x2):
@@ -216,8 +241,8 @@ class GeometricRRT(RRT):
         # print "True"
         return True
 
-    def plot_tree(self, V, P, **kwargs):
-        plot_line_segments([(V[P[i],:], V[i,:]) for i in range(V.shape[0]) if P[i] >= 0], **kwargs)
+    def plot_tree(self, V, **kwargs):
+        plot_line_segments([(V[i].parent.loc, V[i].loc) for i in range(len(V)) if V[i].parent != None], **kwargs)
 
     def plot_path(self, path, **kwargs):
         path = np.array(path)
@@ -303,7 +328,7 @@ MAZE = np.array([
 ])
 
 grrt = GeometricRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
-grrt.solve(3.0, 2000)
+grrt.solve(3.0, 5000)
 
 #drrt = DubinsRRT([-5,-5,0], [5,5,2*np.pi], [-4,-4,0], [4,4,np.pi/2], MAZE, .5)
 #drrt.solve(3.0, 1000)
