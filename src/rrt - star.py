@@ -128,7 +128,7 @@ class RRT(object):
                 solution_path = [parent.loc] + solution_path
             self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
 
-        
+        print goalnode.T
         plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
         plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
@@ -170,6 +170,7 @@ class GeometricRRT(RRT):
                         cmin = Z[i].T + dist
                         zmin = Z[i]
                         
+            x_new.setT(zmin.T + np.linalg.norm(np.array(x_new.loc)-np.array(zmin.loc)))
             x_new.setP(zmin)
             
                       
@@ -328,7 +329,7 @@ MAZE = np.array([
 ])
 
 grrt = GeometricRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
-grrt.solve(3.0, 5000)
+grrt.solve(1.0, 5000)
 
 #drrt = DubinsRRT([-5,-5,0], [5,5,2*np.pi], [-4,-4,0], [4,4,np.pi/2], MAZE, .5)
 #drrt.solve(3.0, 1000)
