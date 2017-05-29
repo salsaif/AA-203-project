@@ -329,7 +329,7 @@ MAZE = np.array([
 ])
 
 grrt = GeometricRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
-grrt.solve(1.0, 5000)
+grrt.solve(3.0, 2000)
 
 #drrt = DubinsRRT([-5,-5,0], [5,5,2*np.pi], [-4,-4,0], [4,4,np.pi/2], MAZE, .5)
 #drrt.solve(3.0, 1000)
