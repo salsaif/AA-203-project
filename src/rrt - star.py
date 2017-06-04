@@ -23,6 +23,8 @@ class node(object):
         
     def getid(self):
         return self._id
+    def __repr__(self):
+        return "%s"%(self.loc)
         
 class RRT(object):
 

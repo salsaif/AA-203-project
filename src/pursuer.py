@@ -124,8 +124,6 @@ class PursuerRRT(object):
         solution_path = [goalnode.loc]
         while np.all(solution_path[0] != self.x_init):
             parent = solution_path_node[0].parent
-            # for i in range(len(parent.children)):
-            #     print(parent.children[i].loc)
             solution_path_node = [parent] + solution_path
             solution_path = [parent.loc] + solution_path
         self.plot_path(solution_path, **kwargs)
@@ -152,7 +150,7 @@ class PursuerRRT(object):
         while i <= max_iters:
             i = i + 1
             x_rand_e = np.random.uniform(self.ss_lo, self.ss_hi)
-            x_new_e = self.extend(x_rand_e,eps)
+            self.extend(x_rand_e,eps)
 
         self.plot_everything()
 

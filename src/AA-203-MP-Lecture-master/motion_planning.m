@@ -37,7 +37,7 @@ plot(X_opt,Y_opt,'ob-','LineWidth',2,'MarkerFaceColor','b');
 
 %% RRT
 figure(1)
-Nmax = 1000;
+Nmax = 100;
 tic
 [c, N, ~] = RRT(start, goal, obstacles, Nmax, 0)
 toc

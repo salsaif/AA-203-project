@@ -30,6 +30,14 @@ class node(object):
     def getid(self):
         return self._id
         
+    def __repr__(self):
+        return "%s"%(self.loc)
+        
+    def remove_child(self, child):
+        if child in self.children:
+            self.numchild -= 1
+            self.children.remove(child)
+        
 class EvaderRRT(object):
     def __init__(self, ss_lo, ss_hi, x_init, x_goal, obstacles):
         self.ss_lo = np.array(ss_lo)
@@ -103,7 +111,7 @@ class EvaderRRT(object):
 
     def rewire(self, zmin, Z_near, x_new, eps):
         if zmin in Z_near:
-                    Z_near.remove(zmin)
+            Z_near.remove(zmin)
         for i in range(len(Z_near)):
             z_near = self.steer_towards(x_new.loc,Z_near[i].loc,eps)
             if np.all(z_near == Z_near[i].loc):
@@ -156,36 +164,11 @@ class EvaderRRT(object):
     #         print("Removing from parent at end didn't work.")
 
 # original: works but is way slower than it needs to be
-    #def remove_branch(self, node):
-    #    for i in range(len(node.children)):
-    #        if node.children[i] == []:
-    #            try: 
-    #                self.V.remove(node)
-    #                self.n = self.n - 1
-    #            except ValueError:
-    #                print("node wasn't in V (1)...")
-    #        else:
-    #            try:
-    #                self.remove_branch(node.children[i])
-    #            except ValueError:
-    #                print("node wasn't in V (2)...")
-    #    try: 
-    #        self.V.remove(node)
-    #        self.n = self.n - 1
-    #    except ValueError:
-    #        print("node wasn't in V (3)...")
-    #    return
-
     def remove_branch(self, node):
-        i = 0
-        while i < node.numchild:
-
-            if node.children[i].numchild == 0:
-                try:
-                    self.V.remove(node.children[i])
-                    node.children[i].parent.numchild -= 1
-                    node.children[i].parent.children.remove(node.children[i])
-                
+        for i in range(len(node.children)):
+            if node.children[i] == []:
+                try: 
+                    self.V.remove(node)
                     self.n = self.n - 1
                 except ValueError:
                     print("node wasn't in V (1)...")
@@ -194,11 +177,31 @@ class EvaderRRT(object):
                     self.remove_branch(node.children[i])
                 except ValueError:
                     print("node wasn't in V (2)...")
-            i += 1
         try: 
             self.V.remove(node)
-            node.parent.children.remove(node)
-            node.parent.numchild -= 1
+            self.n = self.n - 1
+        except ValueError:
+            print("node wasn't in V (3)...")
+        return
+
+    def remove_branch1(self, node):
+        
+        for child in node.children:
+            if child.numchild == 0:
+                try:
+                    self.V.remove(child)
+                    self.n = self.n - 1
+                except ValueError:
+                    print("node wasn't in V (1)...")
+            else:
+                try:
+                    self.remove_branch(child)
+                except ValueError:
+                    print("node wasn't in V (2)...")
+
+        try: 
+            self.V.remove(node)
+            node.parent.remove_child(node)
             self.n = self.n - 1
         except ValueError:
             print("node wasn't in V (3)...")
@@ -235,6 +238,10 @@ class EvaderRRT(object):
         success = False
         for i in range(len(self.V)):
             nodes[i,:] = self.V[i].loc
+            if self.V[i].parent not in self.V:
+                print "AHA"
+                print self.V[i]
+                print self.V[i].parent
             if self.is_safe(self.V[i]):
                 goalnode = self.V[i]
                 success = True
