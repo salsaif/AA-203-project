@@ -49,7 +49,7 @@ class PursuitEvasionGame(object):
                 for z_p_near in Z_p_near:
                     if z_p_near.T < x_new_e.T and x_new_e in self.e.V:
                         print("top")
-                        self.e.remove_branch1(x_new_e)
+                        self.e.remove_branch(x_new_e)
                 # if self.e.is_safe(x_new_e):
                 #     goal = True
                 #     break
@@ -60,7 +60,7 @@ class PursuitEvasionGame(object):
                 for z_e_near in Z_e_near:
                     if x_new_p.T < z_e_near.T and z_e_near in self.e.V:
                         print("bottom")
-                        self.e.remove_branch1(z_e_near)
+                        self.e.remove_branch(z_e_near)
 
         plt.figure()
         self.e.plot_everything()

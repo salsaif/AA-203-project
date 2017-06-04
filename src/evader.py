@@ -131,60 +131,7 @@ class EvaderRRT(object):
                 retval.append(self.V[i])
         return retval
 
-    # def remove_branch(self, node, near_nodes):
-    #     for child in node.children: # n children
-    #         if child.children == []: #if child has no leaves
-    #             if child in near_nodes:
-    #                 try: # (above) see if its also in near_capture_nodes
-    #                     near_nodes.remove(child)
-    #                 except ValueError:
-    #                     print("Child was not in Z_x_near.")
-    #             try: # then remove it from tree
-    #                 self.V.remove(child)
-    #                 self.n = self.n - 1
-    #             except ValueError:
-    #                 print("Empty child wasn't in V.")
-    #             try: # then remove it from tree
-    #                 child.parent.children.remove(child)
-    #                 child.parent.numchild -= 1
-    #             except ValueError:
-    #                 print("Empty child wasn't in parent list.")
-    #         else: # otherwise, it has children too
-    #             print("Recursive call")
-    #             self.remove_branch(child, near_nodes)
-    #     try: 
-    #         self.V.remove(node)
-    #         self.n = self.n - 1
-    #     except ValueError:
-    #         print("Removing from tree at end didn't work.")
-    #     try: 
-    #         node.parent.children.remove(node)
-    #         node.parent.numchild -= 1
-    #     except ValueError:
-    #         print("Removing from parent at end didn't work.")
-
-# original: works but is way slower than it needs to be
     def remove_branch(self, node):
-        for i in range(len(node.children)):
-            if node.children[i] == []:
-                try: 
-                    self.V.remove(node)
-                    self.n = self.n - 1
-                except ValueError:
-                    print("node wasn't in V (1)...")
-            else:
-                try:
-                    self.remove_branch(node.children[i])
-                except ValueError:
-                    print("node wasn't in V (2)...")
-        try: 
-            self.V.remove(node)
-            self.n = self.n - 1
-        except ValueError:
-            print("node wasn't in V (3)...")
-        return
-
-    def remove_branch1(self, node):
         
         for child in node.children:
             if child.numchild == 0:
