@@ -27,14 +27,18 @@ class node(object):
     def getid(self):
         return self._id
         
+    def __repr__(self):
+        return "%s"%(self.loc)
+        
 class PursuerRRT(object):
-    def __init__(self, ss_lo, ss_hi, x_init, obstacles):
+    def __init__(self, ss_lo, ss_hi, x_init, obstacles, sp):
         self.ss_lo = np.array(ss_lo)
         self.ss_hi = np.array(ss_hi)
         self.x_init = np.array(x_init)
         self.obstacles = obstacles
         self.n = 1
         self.V = []
+        self.sp = sp
 
     def is_free_motion(self, obstacles, x1, x2):
         motion = np.array([x1, x2])
@@ -58,18 +62,17 @@ class PursuerRRT(object):
         return x + eps*(y-x)/dist
         
     def extend(self,x_rand,eps):
-        success = False
         x_near = self.V[self.find_nearest(x_rand)]
         x_new = node(self.steer_towards(x_near.loc, x_rand, eps))
         
         if self.is_free_motion(self.obstacles, x_near.loc, x_new.loc):
             self.V.append(x_new)
-            x_new.setT(x_near.T + np.linalg.norm(np.array(x_new.loc)-np.array(x_near.loc)))
+            x_new.setT(x_near.T + self.sp*np.linalg.norm(np.array(x_new.loc)-np.array(x_near.loc)))
             Z_near = self.near(x_new,eps)
             if Z_near:
                 cmin, zmin = self.best_wire(Z_near, x_new, x_near, eps)
                         
-            x_new.setT(zmin.T + np.linalg.norm(np.array(x_new.loc)-np.array(zmin.loc)))
+            x_new.setT(zmin.T + self.sp*np.linalg.norm(np.array(x_new.loc)-np.array(zmin.loc)))
             x_new.setP(zmin)
             zmin.addChild(x_new)
             
@@ -85,7 +88,7 @@ class PursuerRRT(object):
         zmin = x_near
         for i in range(len(Z_near)):
             z_new = self.steer_towards(Z_near[i].loc,x_new.loc,eps)
-            dist = np.linalg.norm(np.array(z_new)-np.array(Z_near[i].loc))
+            dist = self.sp*np.linalg.norm(np.array(z_new)-np.array(Z_near[i].loc))
             if self.is_free_motion(self.obstacles, Z_near[i].loc, z_new) and np.all(z_new == x_new.loc) and Z_near[i].T+dist < cmin:
                 cmin = Z_near[i].T + dist
                 zmin = Z_near[i]
@@ -97,7 +100,7 @@ class PursuerRRT(object):
         for i in range(len(Z_near)):
             z_near = self.steer_towards(x_new.loc,Z_near[i].loc,eps)
             if np.all(z_near == Z_near[i].loc):
-                dist = np.linalg.norm(np.array(x_new.loc)-np.array(Z_near[i].loc))
+                dist = self.sp*np.linalg.norm(np.array(x_new.loc)-np.array(Z_near[i].loc))
                 T_near = Z_near[i].T
                 if self.is_free_motion(self.obstacles, x_new.loc, Z_near[i].loc) and x_new.T+dist < T_near:
                     Z_near[i].setP(x_new)
@@ -153,34 +156,4 @@ class PursuerRRT(object):
             self.extend(x_rand_e,eps)
 
         self.plot_everything()
-
-########################## MAIN ##########################################
-
-MAZE = np.array([
-    ((5, 5), (-5, 5)),
-    ((-5, 5), (-5, -5)),
-    ((-5,-5), (5, -5)),
-    ((5, -5), (5, 5)),
-    ((-3, -3), (-3, -1)),
-    ((-3, -3), (-1, -3)),
-    ((3, 3), (3, 1)),
-    ((3, 3), (1, 3)),
-    ((1, -1), (3, -1)),
-    ((3, -1), (3, -3)),
-    ((-1, 1), (-3, 1)),
-    ((-3, 1), (-3, 3)),
-    ((-1, -1), (1, -3)),
-    ((-1, 5), (-1, 2)),
-    ((0, 0), (1, 1))
-])
-
-NOMAZE = np.array([])
-
-#eps = 1.0
-#max_iters = 200
-#p = PursuerRRT([-2,-2], [2,2], [-1,-1], NOMAZE)
-#p = EvaderRRT([-5,-5], [5,5], [-4,-4], MAZE)
-#p.solve(1.0, max_iters)
-
-########################################################################
 

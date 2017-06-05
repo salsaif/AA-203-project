@@ -2,7 +2,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pursuer
 from utils import plot_line_segments, line_line_intersection
 np.random.seed(1)
 
@@ -53,6 +52,7 @@ class EvaderRRT(object):
         self.obstacles = obstacles
         self.n = 1
         self.V = []
+        self.cost = None
 
     def is_free_motion(self, obstacles, x1, x2):
         motion = np.array([x1, x2])
@@ -76,7 +76,6 @@ class EvaderRRT(object):
         return x + eps*(y-x)/dist
 
     def extend(self,x_rand,eps):
-        success = False
         x_near = self.V[self.find_nearest(x_rand)]
         x_new = node(self.steer_towards(x_near.loc, x_rand, eps))
         
@@ -123,7 +122,6 @@ class EvaderRRT(object):
 
         
     def near(self, x, eps):
-        #dist = 3.0
         dist = min(np.sqrt(100*np.log(self.n)/(np.pi*self.n)),eps)
         retval = []
         for i in range(len(self.V)):
@@ -172,8 +170,6 @@ class EvaderRRT(object):
         solution_path = [goalnode.loc]
         while np.all(solution_path[0] != self.x_init):
             parent = solution_path_node[0].parent
-            # for i in range(len(parent.children)):
-            #     print(parent.children[i].loc)
             solution_path_node = [parent] + solution_path
             solution_path = [parent.loc] + solution_path
         self.plot_path(solution_path, **kwargs)
@@ -185,16 +181,12 @@ class EvaderRRT(object):
         success = False
         for i in range(len(self.V)):
             nodes[i,:] = self.V[i].loc
-            if self.V[i].parent not in self.V:
-                print "AHA"
-                print self.V[i]
-                print self.V[i].parent
             if self.is_safe(self.V[i]):
                 goalnode = self.V[i]
                 success = True
         if success:
             self.plot_solution_path(goalnode, color="green", linewidth=2, label="solution path")
-            print(goalnode.T)
+            self.cost = goalnode.T
 
         plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter(self.x_init[0], self.x_init[1], color="green", s=30, zorder=10)
@@ -221,41 +213,3 @@ class EvaderRRT(object):
                     success = True
 
         self.plot_everything()
-
-########################## MAIN ##########################################
-
-MAZE = np.array([
-    ((5, 5), (-5, 5)),
-    ((-5, 5), (-5, -5)),
-    ((-5,-5), (5, -5)),
-    ((5, -5), (5, 5)),
-    ((-3, -3), (-3, -1)),
-    ((-3, -3), (-1, -3)),
-    ((3, 3), (3, 1)),
-    ((3, 3), (1, 3)),
-    ((1, -1), (3, -1)),
-    ((3, -1), (3, -3)),
-    ((-1, 1), (-3, 1)),
-    ((-3, 1), (-3, 3)),
-    ((-1, -1), (1, -3)),
-    ((-1, 5), (-1, 2)),
-    ((0, 0), (1, 1))
-])
-
-NOMAZE = np.array([])
-
-#eps = 1.0
-#max_iters = 1000
-#e = EvaderRRT([-3,-3], [3,3], [-2,-2], [-1,-1], NOMAZE)
-#p = pursuer.PursuerRRT([-3,-3], [3,3], [2,2], NOMAZE)
-#e = EvaderRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
-#plt.figure()
-#e.solve(1.0)#max_iters)
-#p.solve(1.0, 200)
-#plt.show()
-
-########################################################################
-
-
-
-

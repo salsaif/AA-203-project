@@ -23,6 +23,7 @@ class node(object):
         
     def getid(self):
         return self._id
+        
     def __repr__(self):
         return "%s"%(self.loc)
         
@@ -34,8 +35,8 @@ class RRT(object):
         self.x_init = np.array(x_init)                  # initial state
         self.x_goal = np.array(x_goal)                  # goal state
         self.obstacles = obstacles                      # obstacle set (line segments)
-        self.n = 1
-        self.ave = []
+        self.n = 1                                      # the current size of the RRT 
+        self.cost = None
     # Subject to the robot dynamics, returns whether a point robot moving along the shortest
     # path from x1 to x2 would collide with any obstacles (implemented for you as a "black box")
     # INPUT: (obstacles, x1, x2)
@@ -76,7 +77,6 @@ class RRT(object):
     #               (instead of uniformly randomly sampling from the state space)
     # OUTPUT: None officially (just plots), but see the "Intermediate Outputs" descriptions below
     def solve(self, eps, max_iters = 1000, goal_bias = 0.05):
-        state_dim = len(self.x_init)
 
         # V stores the states that have been added to the RRT (pre-allocated at its maximum size
         # since numpy doesn't play that well with appending/extending)
@@ -84,21 +84,8 @@ class RRT(object):
         x_init.setP(None)
         x_init.setT(0)
         V = [x_init]
-        n = 1                   # the current size of the RRT (states accessible as V[range(n),:])
 
-        # P stores the parent of each state in the RRT. P[0] = -1 since the root has no parent,
-        # P[1] = 0 since the parent of the first additional state added to the RRT must have been
-        # extended from the root, in general 0 <= P[i] < i for all i < n
 
-        ## Intermediate Outputs
-        # You must update and/or populate:
-        #    - V, P, n: the represention of the planning tree
-        #    - succcess: whether or not you've found a solution within max_iters RRT iterations
-        #    - solution_path: if success is True, then must contain list of states (tree nodes)
-        #          [x_init, ..., x_goal] such that the global trajectory made by linking steering
-        #          trajectories connecting the states in order is obstacle-free.
-
-        # TODO: fill me in!
         success = False
         i = 0
         while not success and i <= max_iters:
@@ -131,18 +118,16 @@ class GeometricRRT(RRT):
             cmin = x_new.T
             zmin = x_near
             Z = self.near(V,x_new, eps)
-            self.ave.append(float(len(Z))/len(V))
 
             if Z:
                 for i in range(len(Z)):
                     z_new = self.steer_towards(Z[i].loc,x_new.loc,eps)
                     dist = np.linalg.norm(np.array(z_new)-np.array(Z[i].loc))
                     if self.is_free_motion(self.obstacles, Z[i].loc, z_new) and np.all(z_new == x_new.loc) and Z[i].T+dist < cmin:
-                        #print "improve parent"
                         cmin = Z[i].T + dist
                         zmin = Z[i]
                         
-            x_new.setT(zmin.T + np.linalg.norm(np.array(x_new.loc)-np.array(zmin.loc)))
+            x_new.setT(cmin)
             x_new.setP(zmin)
             
                       
@@ -166,15 +151,12 @@ class GeometricRRT(RRT):
         
 
     def find_nearest(self, V, x):
-        # TODO: fill me in!
         num_states = len(V)
         distances = np.zeros(num_states)
         for i in range(num_states):
             distances[i] = np.linalg.norm(np.array(x)-np.array(V[i].loc))
-        # print distances
 
         idx = np.argmin(distances)
-        # print idx
         return idx
 
     def plot(self,V,success):
@@ -195,8 +177,7 @@ class GeometricRRT(RRT):
                 solution_path_node = [parent] + solution_path
                 solution_path = [parent.loc] + solution_path
             self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
-            print np.mean(self.ave)
-            print goalnode.T
+            self.cost = goalnode.T
         plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
         plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
@@ -223,12 +204,9 @@ class GeometricRRT(RRT):
 
     def is_free_motion(self, obstacles, x1, x2):
         motion = np.array([x1, x2])
-        # print "motion = ", motion
         for line in obstacles:
             if line_line_intersection(motion, line):
-                # print "False"
                 return False
-        # print "True"
         return True
 
     def plot_tree(self, V, **kwargs):
@@ -264,5 +242,6 @@ t = time.time()
 grrt = GeometricRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
 grrt.solve(1.0, 2000)
 elapsed = time.time() - t
-print elapsed
+print "cost = ", grrt.cost
+print "run time = ", elapsed
 plt.show()
