@@ -5,8 +5,7 @@ import time
 from scipy.spatial.distance import squareform, pdist
 from utils import plot_line_segments, line_line_intersection
 import copy
-from shapely.geometry import Point, Polygon
-#np.random.seed(1)
+np.random.seed(1)
 
 # This object contains the location of the node, its parent and its cost (T). Every node has its own unique id.
 class node(object):
@@ -268,6 +267,10 @@ class GeometricFMT(FMT):
 
 ### TESTING
 
+# Maze structure is an np.array of lines, defined by pairs of points. The first
+# four lines defines the MAZE walls, and all the lines following it define the
+# obstacles in the world. Obstalces are restricted to be rectangles (i.e. a 
+# group of four lines)
 MAZE = np.array([
     ((5, 5), (-5, 5)),
     ((-5, 5), (-5, -5)),
@@ -276,11 +279,15 @@ MAZE = np.array([
     ((-3, -3), (-3, -1)),
     ((-3, -1), (-1, -1)),
     ((-1, -1), (-1, -3)),
-    ((-1, -3), (-3, -3))
-#    ((3, 3), (3, 1)),
-#    ((3, 3), (1, 3)),
-#    ((1, -1), (3, -1)),
-#    ((3, -1), (3, -3)),
+    ((-1, -3), (-3, -3)),
+    ((3, 3), (3, 1)),
+    ((3, 1), (1, 1)),
+    ((1, 1), (1, 3)),
+    ((1, 3), (3, 3)),
+    ((1, -1), (3, -1)),
+    ((3, -1), (3, -3)),
+    ((3, -3), (1, -3)),
+    ((1, -3), (1, -1)),
 #    ((-1, 1), (-3, 1)),
 #    ((-3, 1), (-3, 3)),
 #    ((-1, -1), (1, -3)),
@@ -335,7 +342,7 @@ V_p = pursuer.solve(1.0, sample, Nmax, 2)
 # 3) Build Tree for evader. Need to modify the solve method to filter and 
 #    remove branches to nodes where the pursuer's cost < evader's cost
 #    
-evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [4,4], MAZE)
+evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [0,0], MAZE)
 V_e = evader.solve(1.0, sample, Nmax)
 idx_remove = []
 for i in range(1,len(V_e)):
