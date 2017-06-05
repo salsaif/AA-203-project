@@ -130,24 +130,24 @@ class EvaderRRT(object):
         return retval
 
     def remove_branch(self, node):
-        
-        for child in node.children:
+        n = len(node.children)
+        i = n-1
+        while i >= 0:
+            child = node.children[i]
             if child.numchild == 0:
                 try:
                     self.V.remove(child)
-                    self.n = self.n - 1
                 except ValueError:
                     print("node wasn't in V (1)...")
             else:
-                try:
-                    self.remove_branch(child)
-                except ValueError:
-                    print("node wasn't in V (2)...")
+                self.remove_branch(child)
+            
+            i -= 1
 
         try: 
             self.V.remove(node)
-            node.parent.remove_child(node)
-            self.n = self.n - 1
+            if node.parent is not None:
+                node.parent.remove_child(node)
         except ValueError:
             print("node wasn't in V (3)...")
         return

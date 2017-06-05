@@ -88,7 +88,7 @@ elapsed = time.time() - t
 print "run time = ", elapsed
 plt.figure()
 peg.e.plot_everything()
-peg.p.plot_everything()
+#peg.p.plot_everything()
 print "cost = ", peg.e.cost
 
 plt.show()
