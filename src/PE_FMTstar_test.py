@@ -42,11 +42,34 @@ class node(object):
 # Represents a motion planning problem to be solved using the FMT algorithm
 
 def isBetween(obstacles, node, margin):
+        vertix_cnt = 0
         for line in obstacles:
-            a, b = np.array(line)
-            if node[0] <= max(a[0],b[0]) + margin and node[0] >= min(a[0],b[0]) - margin:
-                if node[1] <= max(a[1],b[1]) + margin and node[1] >= min(a[1],b[1]) - margin:
-                    return True
+            if vertix_cnt >= 4 and vertix_cnt%4 == 0: # Skip first rectangle which defines the state space walls
+                # initialize the x and y min/max variables using the first side in the obstacle 
+                pt1, pt2 = line 
+                x_min = min(pt1[0], pt2[0])
+                y_min = min(pt1[1], pt2[1])
+                x_max = max(pt1[0], pt2[0])
+                y_max = max(pt1[1], pt2[1])
+                
+                # loop through all sides of the obstacle to find the diagonal points (lower left and upper right corners)
+                for side in obstacles[vertix_cnt:vertix_cnt+4]:
+                    a, b = np.array(side)
+                    x_min = min(a[0],b[0], x_min)
+                    x_max = max(a[0],b[0], x_max)
+                    y_min = min(a[1],b[1], y_min)
+                    y_max = max(a[1],b[1], y_max)
+
+                # check if node is inside the rectangle
+                if node[0] <= x_max + margin and node[0] >= x_min - margin:
+                    if node[1] <= y_max + margin and node[1] >= y_min - margin:
+                        return True
+            else:
+                a, b = np.array(line)
+                if node[0] <= max(a[0],b[0]) + margin and node[0] >= min(a[0],b[0]) - margin:
+                    if node[1] <= max(a[1],b[1]) + margin and node[1] >= min(a[1],b[1]) - margin:
+                        return True
+            vertix_cnt = vertix_cnt + 1
         return False
 
 class FMT(object):
@@ -88,7 +111,7 @@ class FMT(object):
     #   max_iters - maximum number of FMT iterations (early termination is possible when a feasible
     #               solution is found)
 
-    def solve(self, r, sample, max_iters = 1000, sp = 1.0):
+    def solve(self, r, sample, max_iters = 1000, sp = 1.0, pursuer = False):
 
         x_init = node(self.x_init)
         x_init.id = 0
@@ -128,14 +151,14 @@ class FMT(object):
 
             H.remove(z)
             if not H:
-                success = False
                 break
             
             dists = [self.V[y].T for y in H]
             idx = np.argmin(dists)
             z = H[idx]
             
-            
+            if not pursuer and np.linalg.norm(self.V[z].loc - self.x_goal) <= 0.5:
+                success = True
             
 
 
@@ -200,8 +223,10 @@ class GeometricFMT(FMT):
                 return False
         return True
 
-    def plot_tree(self, V, **kwargs):
-        plot_line_segments([(V[i].parent.loc, V[i].loc) for i in xrange(len(V)) if V[i].parent != None], **kwargs)
+    def plot_tree(self,**kwargs):
+        plot_line_segments([(self.V[i].parent.loc, self.V[i].loc) for i in xrange(len(self.V)) if self.V[i].parent != None], **kwargs)
+        plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
+
 
     def plot_path(self, path, **kwargs):
         path = np.array(path)
@@ -219,10 +244,13 @@ class GeometricFMT(FMT):
                 success = True
                 goalnode = self.V[i]
             
-        plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
-        self.plot_tree(self.V, color="blue", linewidth=.5, label="RRT tree")
+        self.plot_tree(color="blue", linewidth=.5, label="RRT tree")
         plt.scatter(nodes[:,0], nodes[:,1])
-        plt.scatter([self.x_init[0], goal[0]], [self.x_init[1], goal[1]], color="green", s=30, zorder=10)
+        xgoal = np.linspace(goal[0]-0.5,goal[0]+0.5,10)
+        ygoal1 = (goal[1]-0.5)*np.ones(10)
+        ygoal2 = (goal[1]+0.5)*np.ones(10)
+        plt.fill_between(xgoal,ygoal1,ygoal2,color="green")
+        plt.scatter([self.x_init[0]], [self.x_init[1]], color="green", s=30, zorder=10)
         plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
         plt.annotate(r"$x_{goal}$", goal[:2] + [.2, 0], fontsize=16)
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.03), fancybox=True, ncol=3)
@@ -251,16 +279,22 @@ MAZE = np.array([
     ((-5,-5), (5, -5)),
     ((5, -5), (5, 5)),
     ((-3, -3), (-3, -1)),
-    ((-3, -3), (-1, -3)),
+    ((-3, -1), (-1, -1)),
+    ((-1, -1), (-1, -3)),
+    ((-1, -3), (-3, -3)),
     ((3, 3), (3, 1)),
-    ((3, 3), (1, 3)),
+    ((3, 1), (1, 1)),
+    ((1, 1), (1, 3)),
+    ((1, 3), (3, 3)),
     ((1, -1), (3, -1)),
     ((3, -1), (3, -3)),
-    ((-1, 1), (-3, 1)),
-    ((-3, 1), (-3, 3)),
-    ((-1, -1), (1, -3)),
-    ((-1, 5), (-1, 2)),
-    ((0, 0), (1, 1))
+    ((3, -3), (1, -3)),
+    ((1, -3), (1, -1)),
+#    ((-1, 1), (-3, 1)),
+#    ((-3, 1), (-3, 3)),
+#    ((-1, -1), (1, -3)),
+#    ((-1, 5), (-1, 2)),
+#    ((0, 0), (1, 1))
 ])
 #t = time.time()
 #grrt = GeometricFMT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
@@ -288,8 +322,8 @@ for i in range(1,Nmax + 1): # Collect sample points each node id is the same as 
 # 2) Build Tree for pursuer, set pursuer goal to the region that's diagonally
 #    opposite to its starting point to ensure that the FMT tree covers the 
 #    whole state space
-pursuer = GeometricFMT(statespace_lo, statespace_hi, [-4,4], [4,-4], MAZE)
-pursuer.solve(1.0, copy.deepcopy(sample), Nmax, 1.4)
+pursuer = GeometricFMT(statespace_lo, statespace_hi, [-4,4], None, MAZE)
+pursuer.solve(1.0, copy.deepcopy(sample), Nmax, 1.5, True)
 
 # Compare the costs of the same node. Best is to do it by location. Since we 
 # have the sample, then we loop through the location of the nodes. How do you 
@@ -310,7 +344,7 @@ pursuer.solve(1.0, copy.deepcopy(sample), Nmax, 1.4)
 # 3) Build Tree for evader. Need to modify the solve method to filter and 
 #    remove branches to nodes where the pursuer's cost < evader's cost
 #    
-evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [4,4], MAZE)
+evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [4,0], MAZE)
 evader.solve(1.0, copy.deepcopy(sample), Nmax)
 node_remove = []
 
@@ -321,7 +355,7 @@ for i in range(1,len(evader.V)):
 for node in node_remove:
     if node in evader.V:
         evader.remove_branch(node)        
-evader.plot_all(np.array([0,0]))
+evader.plot_all()
 t2 = time.time() - t
 print "cost = ", evader.cost
 print "time of PE-FMT* =", t2

@@ -78,7 +78,6 @@ class EvaderRRT(object):
     def extend(self,x_rand,eps):
         x_near = self.V[self.find_nearest(x_rand)]
         x_new = node(self.steer_towards(x_near.loc, x_rand, eps))
-        
         if self.is_free_motion(self.obstacles, x_near.loc, x_new.loc):
             self.V.append(x_new)
             x_new.setT(x_near.T + np.linalg.norm(np.array(x_new.loc)-np.array(x_near.loc)))
@@ -92,7 +91,7 @@ class EvaderRRT(object):
             
             if Z_near:
                 self.rewire(zmin, Z_near, x_new, eps)
-                    
+            
             self.n = self.n+1
             return x_new
         return None
@@ -175,7 +174,7 @@ class EvaderRRT(object):
         self.plot_path(solution_path, **kwargs)
 
     def plot_everything(self):
-        plot_line_segments(self.obstacles, color="black", linewidth=2, label="obstacles")
+        plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
         self.plot_tree(color="blue", linewidth=.5, label="RRT tree")
         nodes = np.zeros((self.n,2))
         success = False
@@ -188,6 +187,7 @@ class EvaderRRT(object):
             self.plot_solution_path(goalnode, color="green", linewidth=2, label="solution path")
             self.cost = goalnode.T
 
+        
         plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter(self.x_init[0], self.x_init[1], color="green", s=30, zorder=10)
         plt.annotate(r"$e_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
@@ -195,6 +195,10 @@ class EvaderRRT(object):
             plt.scatter(goalnode.loc[0], goalnode.loc[1], color="green", s=30, zorder=10)
             plt.annotate(r"$x_{goal}$", goalnode.loc[:2] + [.2, 0], fontsize=16)
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.03), fancybox=True, ncol=3)
+        xgoal = np.linspace(self.x_goal[0]-0.5,self.x_goal[0]+0.5,10)
+        ygoal1 = (self.x_goal[1]-0.5)*np.ones(10)
+        ygoal2 = (self.x_goal[1]+0.5)*np.ones(10)
+        plt.fill_between(xgoal,ygoal1,ygoal2,color="green")
 
     def solve(self, eps, max_iters = 1000):
         x_init = node(self.x_init)

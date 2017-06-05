@@ -178,6 +178,10 @@ class GeometricRRT(RRT):
                 solution_path = [parent.loc] + solution_path
             self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
             self.cost = goalnode.T
+        xgoal = np.linspace(self.x_goal[0]-0.5,self.x_goal[0]+0.5,10)
+        ygoal1 = (self.x_goal[1]-0.5)*np.ones(10)
+        ygoal2 = (self.x_goal[1]+0.5)*np.ones(10)
+        plt.fill_between(xgoal,ygoal1,ygoal2,color="green")
         plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
         plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
