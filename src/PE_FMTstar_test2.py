@@ -1,10 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.path as pltpath
 import time
 from scipy.spatial.distance import squareform, pdist
 from utils import plot_line_segments, line_line_intersection
 import copy
-np.random.seed(1)
+from shapely.geometry import Point, Polygon
+#np.random.seed(1)
 
 # This object contains the location of the node, its parent and its cost (T). Every node has its own unique id.
 class node(object):
@@ -30,17 +32,37 @@ class node(object):
         
 # Represents a motion planning problem to be solved using the FMT algorithm
 
+# isBetween assumes that obstacles are all rectangles represented by four 2D
+# points 
 def isBetween(obstacles, node, margin):
+        vertix_cnt = 0
         for line in obstacles:
-#            x1, x2 = np.array(line)
-#            m = (x2[1] - x1[1]) / (x2[0] - x1[0])
-#            b = x1[1] - m * x1[0]
-#            if abs(node[1] - (m * node[0] + b)) <= margin:
-#                return True  
-            a, b = np.array(line)
-            if node[0] <= max(a[0],b[0]) + margin and node[0] >= min(a[0],b[0]) - margin:
-                if node[1] <= max(a[1],b[1]) + margin and node[1] >= min(a[1],b[1]) - margin:
-                    return True
+            if vertix_cnt >= 4 and vertix_cnt%4 == 0: # Skip first rectangle which defines the state space walls
+                # initialize the x and y min/max variables using the first side in the obstacle 
+                pt1, pt2 = line 
+                x_min = min(pt1[0], pt2[0])
+                y_min = min(pt1[1], pt2[1])
+                x_max = max(pt1[0], pt2[0])
+                y_max = max(pt1[1], pt2[1])
+                
+                # loop through all sides of the obstacle to find the diagonal points (lower left and upper right corners)
+                for side in obstacles[vertix_cnt:vertix_cnt+4]:
+                    a, b = np.array(side)
+                    x_min = min(a[0],b[0], x_min)
+                    x_max = max(a[0],b[0], x_max)
+                    y_min = min(a[1],b[1], y_min)
+                    y_max = max(a[1],b[1], y_max)
+
+                # check if node is inside the rectangle
+                if node[0] <= x_max + margin and node[0] >= x_min - margin:
+                    if node[1] <= y_max + margin and node[1] >= y_min - margin:
+                        return True
+            else:
+                a, b = np.array(line)
+                if node[0] <= max(a[0],b[0]) + margin and node[0] >= min(a[0],b[0]) - margin:
+                    if node[1] <= max(a[1],b[1]) + margin and node[1] >= min(a[1],b[1]) - margin:
+                        return True
+            vertix_cnt = vertix_cnt + 1
         return False
 
 class FMT(object):
@@ -51,7 +73,6 @@ class FMT(object):
         self.x_init = np.array(x_init)                  # initial state
         self.x_goal = np.array(x_goal)                  # goal state
         self.obstacles = obstacles                      # obstacle set (line segments)
-        self.cost = None
 
     # Subject to the robot dynamics, returns whether a point robot moving along the shortest
     # path from x1 to x2 would collide with any obstacles (implemented for you as a "black box")
@@ -107,9 +128,13 @@ class FMT(object):
         while not success and n <= max_iters:
             n = n + 1 
             Hnew = []
-            Xnear = self.near(V, w, z, r) 
+            Nz = self.near(V, V_ids, z, r) 
+            Xnear = self.intersect(Nz,w)
             for x in Xnear:
-                Ynear = self.near(V, H,x,r)                    
+                Nx = self.near(V, V_ids,x,r)
+                
+                Ynear = self.intersect(Nx,H)
+                    
                 dists = [V[y].T+sp*D[y,x] for y in Ynear]
                 idx = np.argmin(dists)
                 ymin = V[Ynear[idx]]
@@ -134,6 +159,27 @@ class FMT(object):
             
             if np.linalg.norm(V[z].loc - self.x_goal) <= 0.5:
                 success = True
+
+
+        plt.figure()
+        plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
+        self.plot_tree(V, color="blue", linewidth=.5, label="FMT* tree")
+        plt.scatter(nodes[:,0], nodes[:,1])
+        plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
+        plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
+        plt.annotate(r"$x_{goal}$", self.x_goal[:2] + [.2, 0], fontsize=16)
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.03), fancybox=True, ncol=3)
+
+        goalnode = V[z]   
+        if success:
+
+            solution_path_node = [goalnode]
+            solution_path = [goalnode.loc]
+            while np.all(solution_path[0] != self.x_init):
+                parent = solution_path_node[0].parent
+                solution_path_node = [parent] + solution_path
+                solution_path = [parent.loc] + solution_path
+            self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
         return V
 
 
@@ -151,17 +197,20 @@ class GeometricFMT(FMT):
         idx = np.argmin(distances)
         return idx
         
+    def intersect(self, l1, l2):
+        return list(set(l1).intersection(l2))
+        
     def dist(self,x,y):
         return np.linalg.norm(np.array(x.loc)-np.array(y.loc))
         
     def near(self, V, Vid, x, r):
-        n = len(V)
-        dist = min(np.sqrt(100*np.log(n)/(np.pi*n)),r)
+
+        dist = r
 
         retval = []
-        for i in Vid:
+        for i in range(len(V)):
             if self.dist(V[x],V[i]) < dist:
-                retval.append(i)
+                retval.append(Vid[i])
 
         if x in retval:
             retval.remove(x)
@@ -184,7 +233,7 @@ class GeometricFMT(FMT):
         plt.plot(path[:,0], path[:,1], **kwargs)
         
     def plot_all(self,V, goal = None):
-        if goal is None:
+        if goal == None:
             goal = self.x_goal
         nodes = np.zeros((len(V),2))
         for i in range(len(V)):
@@ -204,7 +253,6 @@ class GeometricFMT(FMT):
                 success = True
                 goalnode = node
         if success:
-            self.cost = goalnode.T
             solution_path_node = [goalnode]
             solution_path = [goalnode.loc]
             while np.all(solution_path[0] != self.x_init):
@@ -226,16 +274,18 @@ MAZE = np.array([
     ((-5,-5), (5, -5)),
     ((5, -5), (5, 5)),
     ((-3, -3), (-3, -1)),
-    ((-3, -3), (-1, -3)),
-    ((3, 3), (3, 1)),
-    ((3, 3), (1, 3)),
-    ((1, -1), (3, -1)),
-    ((3, -1), (3, -3)),
-    ((-1, 1), (-3, 1)),
-    ((-3, 1), (-3, 3)),
-    ((-1, -1), (1, -3)),
-    ((-1, 5), (-1, 2)),
-    ((0, 0), (1, 1))
+    ((-3, -1), (-1, -1)),
+    ((-1, -1), (-1, -3)),
+    ((-1, -3), (-3, -3))
+#    ((3, 3), (3, 1)),
+#    ((3, 3), (1, 3)),
+#    ((1, -1), (3, -1)),
+#    ((3, -1), (3, -3)),
+#    ((-1, 1), (-3, 1)),
+#    ((-3, 1), (-3, 3)),
+#    ((-1, -1), (1, -3)),
+#    ((-1, 5), (-1, 2)),
+#    ((0, 0), (1, 1))
 ])
 #t = time.time()
 #grrt = GeometricFMT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
@@ -264,7 +314,7 @@ for i in range(1,Nmax + 1): # Collect sample points each node id is the same as 
 #    opposite to its starting point to ensure that the FMT tree covers the 
 #    whole state space
 pursuer = GeometricFMT(statespace_lo, statespace_hi, [-4,4], [4,-4], MAZE)
-V_p = pursuer.solve(1.0, sample, Nmax, 1.2)
+V_p = pursuer.solve(1.0, sample, Nmax, 2)
 
 # Compare the costs of the same node. Best is to do it by location. Since we 
 # have the sample, then we loop through the location of the nodes. How do you 
@@ -289,14 +339,11 @@ evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [4,4], MAZE)
 V_e = evader.solve(1.0, sample, Nmax)
 idx_remove = []
 for i in range(1,len(V_e)):
-    if V_e[i].T == None or (V_p[i].T != None and (V_p[i].T - V_e[i].T) <= 0.5):
+    if (V_p[i].T <= V_e[i].T and V_p[i].T != None) or V_e[i].T == None:
         idx_remove.append(i)
-
 idx_remove.reverse()
 for i in idx_remove:
     V_e.remove(V_e[i])        
 evader.plot_all(V_e,np.array([0,0]))
 t2 = time.time() - t
-print "cost = ", evader.cost
-print "time of PE-FMT* =", t2
-plt.show()
+print "Runtime of PE-FMT* =", t2
