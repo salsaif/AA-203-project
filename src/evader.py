@@ -43,7 +43,7 @@ class EvaderRRT(object):
         self.ss_hi = np.array(ss_hi)
         self.x_init = np.array(x_init)
         self.x_goal = np.array(x_goal)
-        margin = 0.25
+        margin = 0.5
         x_goal_hi = x_goal[0]+margin
         x_goal_lo = x_goal[0]-margin
         y_goal_hi = x_goal[1]+margin
@@ -176,7 +176,7 @@ class EvaderRRT(object):
     def plot_everything(self):
         plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
         self.plot_tree(color="blue", linewidth=.5, label="RRT tree")
-        nodes = np.zeros((self.n,2))
+        nodes = np.zeros((len(self.V),2))
         success = False
         for i in range(len(self.V)):
             nodes[i,:] = self.V[i].loc

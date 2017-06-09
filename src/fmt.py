@@ -91,7 +91,7 @@ class FMT(object):
         z = 0 # Variable to track the current node (z is always a node object)
         success = False
         n = 0
-        while not success and n <= max_iters:
+        while n <= max_iters:
             n = n + 1 
             Hnew = []
             Xnear = self.near(V, w, z, r) 
@@ -119,7 +119,7 @@ class FMT(object):
             z = H[idx]
             
             
-            if np.linalg.norm(V[z].loc - self.x_goal) <= 0.5:
+            if np.linalg.norm(V[z].loc - self.x_goal,np.inf) <= 0.5:
                 success = True
 
 
@@ -127,16 +127,24 @@ class FMT(object):
 
         plt.figure()
         plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
-        self.plot_tree(V, color="blue", linewidth=.5, label="RRT tree")
+        self.plot_tree(V, color="blue", linewidth=.5, label="FMT tree")
+        xgoal = np.linspace(self.x_goal[0]-0.5,self.x_goal[0]+0.5,10)
+        ygoal1 = (self.x_goal[1]-0.5)*np.ones(10)
+        ygoal2 = (self.x_goal[1]+0.5)*np.ones(10)
+        plt.fill_between(xgoal,ygoal1,ygoal2,color="green")
         plt.scatter(nodes[:,0], nodes[:,1])
         plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
         plt.annotate(r"$x_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
         plt.annotate(r"$x_{goal}$", self.x_goal[:2] + [.2, 0], fontsize=16)
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.03), fancybox=True, ncol=3)
-
-        
+        success = False
+        for i in range(len(V)):
+            if np.linalg.norm(V[i].loc - self.x_goal,np.inf) <= 0.5:
+                success = True
+                goalnode = V[i]
+                break
+                
         if success:
-            goalnode = V[z]
             self.cost = goalnode.T
             solution_path_node = [goalnode]
             solution_path = [goalnode.loc]
@@ -153,11 +161,34 @@ class FMT(object):
 class GeometricFMT(FMT):
     
     def isBetween(self, obstacles, node, margin):
+        vertix_cnt = 0
         for line in obstacles:
-            a, b = np.array(line)
-            if node[0] <= max(a[0],b[0]) + margin and node[0] >= min(a[0],b[0]) - margin:
-                if node[1] <= max(a[1],b[1]) + margin and node[1] >= min(a[1],b[1]) - margin:
-                    return True
+            if vertix_cnt >= 4 and vertix_cnt%4 == 0: # Skip first rectangle which defines the state space walls
+                # initialize the x and y min/max variables using the first side in the obstacle 
+                pt1, pt2 = line 
+                x_min = min(pt1[0], pt2[0])
+                y_min = min(pt1[1], pt2[1])
+                x_max = max(pt1[0], pt2[0])
+                y_max = max(pt1[1], pt2[1])
+                
+                # loop through all sides of the obstacle to find the diagonal points (lower left and upper right corners)
+                for side in obstacles[vertix_cnt:vertix_cnt+4]:
+                    a, b = np.array(side)
+                    x_min = min(a[0],b[0], x_min)
+                    x_max = max(a[0],b[0], x_max)
+                    y_min = min(a[1],b[1], y_min)
+                    y_max = max(a[1],b[1], y_max)
+
+                # check if node is inside the rectangle
+                if node[0] <= x_max + margin and node[0] >= x_min - margin:
+                    if node[1] <= y_max + margin and node[1] >= y_min - margin:
+                        return True
+            else:
+                a, b = np.array(line)
+                if node[0] <= max(a[0],b[0]) + margin and node[0] >= min(a[0],b[0]) - margin:
+                    if node[1] <= max(a[1],b[1]) + margin and node[1] >= min(a[1],b[1]) - margin:
+                        return True
+            vertix_cnt = vertix_cnt + 1
         return False
         
     def find_nearest(self, V, x):
@@ -211,20 +242,26 @@ MAZE = np.array([
     ((-5,-5), (5, -5)),
     ((5, -5), (5, 5)),
     ((-3, -3), (-3, -1)),
-    ((-3, -3), (-1, -3)),
+    ((-3, -1), (-1, -1)),
+    ((-1, -1), (-1, -3)),
+    ((-1, -3), (-3, -3)),
     ((3, 3), (3, 1)),
-    ((3, 3), (1, 3)),
+    ((3, 1), (1, 1)),
+    ((1, 1), (1, 3)),
+    ((1, 3), (3, 3)),
     ((1, -1), (3, -1)),
     ((3, -1), (3, -3)),
-    ((-1, 1), (-3, 1)),
-    ((-3, 1), (-3, 3)),
-    ((-1, -1), (1, -3)),
-    ((-1, 5), (-1, 2)),
-    ((0, 0), (1, 1))
+    ((3, -3), (1, -3)),
+    ((1, -3), (1, -1)),
+#    ((-1, 1), (-3, 1)),
+#    ((-3, 1), (-3, 3)),
+#    ((-1, -1), (1, -3)),
+#    ((-1, 5), (-1, 2)),
+#    ((0, 0), (1, 1))
 ])
 t = time.time()
 grrt = GeometricFMT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
-grrt.solve(1.0, 500)
+grrt.solve(1.0, 2000)
 elapsed = time.time() - t
 print "cost = ", grrt.cost
 print "run time = ", elapsed

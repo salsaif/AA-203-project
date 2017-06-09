@@ -128,9 +128,8 @@ class FMT(object):
         w = range(1,len(self.V)) # Set W tracks nodes by id not yet added to the tree starting with all nodes in V except x_init
         H = [0] # Set H tracks the nodes by id added to the tree starting with id of x_init
         z = 0 # Variable to track the current node (z is always a node object)
-        success = False
         n = 0
-        while not success and n <= max_iters:
+        while n <= max_iters:
             n = n + 1 
             Hnew = []
             Xnear = self.near(w, z, r) 
@@ -157,8 +156,7 @@ class FMT(object):
             idx = np.argmin(dists)
             z = H[idx]
             
-            if not pursuer and np.linalg.norm(self.V[z].loc - self.x_goal) <= 0.5:
-                success = True
+
             
 
 
@@ -240,11 +238,11 @@ class GeometricFMT(FMT):
         success = False
         for i in range(len(self.V)):
             nodes[i,:] = self.V[i].loc
-            if np.linalg.norm(self.V[i].loc - goal) <= 0.5:
+            if np.linalg.norm(self.V[i].loc - goal,np.inf) <= 0.5:
                 success = True
                 goalnode = self.V[i]
             
-        self.plot_tree(color="blue", linewidth=.5, label="RRT tree")
+        self.plot_tree(color="blue", linewidth=.5, label="FMT tree")
         plt.scatter(nodes[:,0], nodes[:,1])
         xgoal = np.linspace(goal[0]-0.5,goal[0]+0.5,10)
         ygoal1 = (goal[1]-0.5)*np.ones(10)
@@ -307,7 +305,7 @@ MAZE = np.array([
 
 # 1) Create uniform sample of nodes to be used by both agents to build their 
 #    respective trees
-Nmax = 800                # Number of sampled points
+Nmax = 2000                # Number of sampled points
 statespace_lo = [-5,-5]
 statespace_hi = [5,5]
 
@@ -344,7 +342,7 @@ pursuer.solve(1.0, copy.deepcopy(sample), Nmax, 1.5, True)
 # 3) Build Tree for evader. Need to modify the solve method to filter and 
 #    remove branches to nodes where the pursuer's cost < evader's cost
 #    
-evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [4,0], MAZE)
+evader = GeometricFMT(statespace_lo, statespace_hi, [-4,-4], [4,4], MAZE)
 evader.solve(1.0, copy.deepcopy(sample), Nmax)
 node_remove = []
 

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 #from dubins import path_length, path_sample
 from utils import plot_line_segments, line_line_intersection
 import time
-np.random.seed(1)
+np.random.seed(3)
 
 # Represents a motion planning problem to be solved using the RRT algorithm
 class node(object):
@@ -88,7 +88,7 @@ class RRT(object):
 
         success = False
         i = 0
-        while not success and i <= max_iters:
+        while i <= max_iters:
             i = i + 1
             z = np.random.uniform()
             if z < goal_bias :
@@ -99,7 +99,7 @@ class RRT(object):
 
 
 
-        self.plot(V,success)
+        self.plot(V,True)
 
 
 # Represents a geometric planning problem, where the steering solution between two points is a
@@ -231,16 +231,22 @@ MAZE = np.array([
     ((-5,-5), (5, -5)),
     ((5, -5), (5, 5)),
     ((-3, -3), (-3, -1)),
-    ((-3, -3), (-1, -3)),
+    ((-3, -1), (-1, -1)),
+    ((-1, -1), (-1, -3)),
+    ((-1, -3), (-3, -3)),
     ((3, 3), (3, 1)),
-    ((3, 3), (1, 3)),
+    ((3, 1), (1, 1)),
+    ((1, 1), (1, 3)),
+    ((1, 3), (3, 3)),
     ((1, -1), (3, -1)),
     ((3, -1), (3, -3)),
-    ((-1, 1), (-3, 1)),
-    ((-3, 1), (-3, 3)),
-    ((-1, -1), (1, -3)),
-    ((-1, 5), (-1, 2)),
-    ((0, 0), (1, 1))
+    ((3, -3), (1, -3)),
+    ((1, -3), (1, -1)),
+#    ((-1, 1), (-3, 1)),
+#    ((-3, 1), (-3, 3)),
+#    ((-1, -1), (1, -3)),
+#    ((-1, 5), (-1, 2)),
+#    ((0, 0), (1, 1))
 ])
 t = time.time()
 grrt = GeometricRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)

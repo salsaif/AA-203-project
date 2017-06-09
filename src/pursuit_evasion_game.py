@@ -15,7 +15,7 @@ class PursuitEvasionGame(object):
 
     def near_capture(self, tree, x,eps):
         n = len(tree)
-        dist = min(np.sqrt(100*np.log(n)/(np.pi*n)),eps)
+        dist = min(np.sqrt(500*np.log(n)/(np.pi*n)),eps)
         retval = []
         for i in range(len(tree)):
             if np.linalg.norm(np.array(x.loc)-np.array(tree[i].loc)) <= dist:
@@ -85,10 +85,10 @@ MAZE = np.array([
 NOMAZE = np.array([])
 
 t = time.time()
-e = evader.EvaderRRT([-5,-5], [5,5], [-4,-4], [3,0], MAZE)
-p = pursuer.PursuerRRT([-5,-5], [5,5], [-4,0], MAZE,2.0)
+e = evader.EvaderRRT([-5,-5], [5,5], [-4,-4], [4,4], MAZE)
+p = pursuer.PursuerRRT([-5,-5], [5,5], [-4,4], MAZE,1.5)
 peg = PursuitEvasionGame(e,p)
-peg.play_game(500,3.0)
+peg.play_game(2000,1.0)
 elapsed = time.time() - t
 print "run time = ", elapsed
 plt.figure()
