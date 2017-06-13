@@ -184,7 +184,7 @@ class EvaderRRT(object):
                 goalnode = self.V[i]
                 success = True
         if success:
-            self.plot_solution_path(goalnode, color="green", linewidth=2, label="solution path")
+            self.plot_solution_path(goalnode, color="green", linewidth=5, label="solution path")
             self.cost = goalnode.T
 
         

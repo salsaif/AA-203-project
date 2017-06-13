@@ -152,7 +152,7 @@ class FMT(object):
                 parent = solution_path_node[0].parent
                 solution_path_node = [parent] + solution_path
                 solution_path = [parent.loc] + solution_path
-            self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
+            self.plot_path(solution_path, color="green", linewidth=5, label="solution path")
 
 
 

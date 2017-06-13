@@ -132,15 +132,15 @@ class PursuerRRT(object):
         self.plot_path(solution_path, **kwargs)
 
     def plot_everything(self):
-        plot_line_segments(self.obstacles, color="black", linewidth=2, label="obstacles")
-        self.plot_tree(color="red", linewidth=.5, label="RRT tree")
+        plot_line_segments(self.obstacles, color="red", linewidth=2, label="obstacles")
+        self.plot_tree(color="blue", linewidth=.5, label="RRT tree")
         nodes = np.zeros((self.n,2))
         for i in range(len(self.V)):
             nodes[i,:] = self.V[i].loc
 
-        plt.scatter(nodes[:,0], nodes[:,1],color="red")
-        plt.scatter(self.x_init[0], self.x_init[1], color="green", s=30, zorder=10)
-        plt.annotate(r"$p_{init}$", self.x_init[:2] + [.2, 0], fontsize=16)
+        plt.scatter(nodes[:,0], nodes[:,1],color="blue")
+        plt.scatter(self.x_init[0], self.x_init[1], color="red", s=30, zorder=10)
+        plt.annotate(r"pursuer", self.x_init[:2] + [.2, 0], fontsize=16)
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.03), fancybox=True, ncol=3)
 
     def solve(self, eps, max_iters = 1000):

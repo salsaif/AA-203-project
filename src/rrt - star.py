@@ -176,7 +176,7 @@ class GeometricRRT(RRT):
                 parent = solution_path_node[0].parent
                 solution_path_node = [parent] + solution_path
                 solution_path = [parent.loc] + solution_path
-            self.plot_path(solution_path, color="green", linewidth=2, label="solution path")
+            self.plot_path(solution_path, color="green", linewidth=5, label="solution path")
             self.cost = goalnode.T
         xgoal = np.linspace(self.x_goal[0]-0.5,self.x_goal[0]+0.5,10)
         ygoal1 = (self.x_goal[1]-0.5)*np.ones(10)
